@@ -1,0 +1,237 @@
+import {Point} from "../types/Point";
+import {Vector} from "./Vector";
+import {BSPNode} from "./BSPNode";
+
+
+export class Polygon {
+    public id?: string;
+    public node?: BSPNode;
+    public sum?: number;
+    public distance: number = 0;
+    public color?: string;
+    public normal: Point;
+
+    public constructor(
+        public points: Point[],
+        normal?: Point
+    ) {
+        this.normal = !normal ? this.calcNormal() : normal;
+    }
+
+    public setId(id: string) {
+        this.id = id;
+    }
+
+    public intersects(polygon: Polygon): boolean {
+        let axes = [
+            ...Polygon.getNormals(this.points),
+            ...Polygon.getNormals(polygon.points)
+        ];
+
+        for(let axis of axes) {
+            let projection1 = Polygon.projection(this.points, axis);
+            let projection2 = Polygon.projection(polygon.points, axis);
+
+            if(projection1.max < projection2.min || projection2.max < projection1.min) {
+                return false;
+            }
+
+            if(projection1.max === projection2.min || projection2.max === projection1.min) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public smooth(): Polygon[] {
+        return [];
+    }
+
+    public getNormal(): Point {
+        return this.normal;
+    }
+
+    private calcNormal(): Point {
+        let normal: Point = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+
+        for(let i = 0; i < this.points.length; i++) {
+            const p1 = this.points[i];
+            const p2 = this.points[(i + 1) % this.points.length];
+            const p3 = this.points[(i + 2) % this.points.length];
+
+            const vector1 = Vector.subtract(p1, p2);
+            const vector2 = Vector.subtract(p1, p3);
+
+            const cross = Vector.cross(vector1, vector2);
+
+            normal = Vector.summary(normal, cross);
+        }
+
+        return Vector.normalize({
+            x: normal.x / this.points.length,
+            y: normal.y / this.points.length,
+            z: normal.z / this.points.length
+        });
+    }
+
+    public getCenter(): Point {
+        let center: Point = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+
+        for(let i = 0; i < this.points.length; i++) {
+            center = Vector.summary(this.points[i], center);
+        }
+
+        return {
+            x: center.x / this.points.length,
+            y: center.y / this.points.length,
+            z: center.z / this.points.length,
+        };
+    }
+
+    public isContainPoint(p: Point): boolean {
+        let inside = false;
+
+        for(let i = 0; i < this.points.length; i++) {
+            const p1 = this.points[i];
+            const p2 = this.points[(i + 1) % this.points.length];
+            const p3 = this.points[(i + 2) % this.points.length];
+
+            const v0 = Vector.subtract(p3, p1);
+            const v1 = Vector.subtract(p2, p1);
+            const v2 = Vector.subtract(p, p1);
+
+            const dot00 = Vector.dot(v0, v0);
+            const dot01 = Vector.dot(v0, v1);
+            const dot02 = Vector.dot(v0, v2);
+            const dot11 = Vector.dot(v1, v1);
+            const dot12 = Vector.dot(v1, v2);
+
+            const invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+            const u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+            const v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+
+            if((u >= 0) && (v >= 0) && (u + v < 1)) {
+                inside = true;
+                break;
+            }
+        }
+
+        return inside;
+    }
+
+    public isOnSamePlane(p: Point): boolean {
+        const normal = this.getNormal();
+        const referencePoint  = this.points[0];
+
+        const dotProduct = ((p.x - referencePoint.x) * normal.x)
+            + ((p.y - referencePoint.y) * normal.y)
+            + ((p.z - referencePoint.z) * normal.z);
+
+        return Math.abs(dotProduct) < 0.0001;
+        // Де 0,0001 - це точність декількох знаків після коми,
+        // може бути адаптовано в залежності від ваших потреб.
+    }
+
+    public static isIntersect(A: Polygon, B: Polygon): boolean {
+        return false;
+    }
+
+    public static intersect(A: Polygon, B: Polygon): Polygon[] {
+        let before: Point[] = [];
+        let after: Point[] = [];
+
+        let isBefore = true;
+
+        for(let i = 0; i < A.points.length; i++) {
+            const a1 = A.points[i];
+            const a2 = A.points[(i + 1) % A.points.length];
+            const vector = Vector.subtract(a2, a1);
+
+            if(isBefore) {
+                before.push(a1);
+            }
+            else {
+                after.push(a1);
+            }
+
+            for(let j = 0; j < B.points.length; j++) {
+                const b1 = B.points[j];
+                const b2 = B.points[(j + 1) % B.points.length];
+                const b3 = B.points[(j + 2) % B.points.length];
+
+                const intersectPoint = Vector.intersectWithTriangle(a1, vector, b1, b2, b3);
+
+                if(intersectPoint && A.isContainPoint(intersectPoint)) {
+                    if(isBefore) {
+                        before.push(intersectPoint);
+                        after.push(intersectPoint);
+                    }
+                    else {
+                        before.push(intersectPoint);
+                        after.push(intersectPoint);
+                    }
+
+                    isBefore = !isBefore;
+                    break;
+                }
+            }
+        }
+
+        return [
+            new Polygon(before),
+            new Polygon(after)
+        ];
+    }
+
+    private static getNormals(points: Point[]): Point[] {
+        let normals: Point[] = [];
+
+        for(let i = 0; i < points.length; i++) {
+            let p1 = points[i];
+            let p2 = points[(i + 1) % points.length];
+
+            let edge = {
+                x: p2.x - p1.x,
+                y: p2.y - p1.y,
+                z: p2.z - p1.z
+            };
+
+            let normal = {
+                x: -edge.y,
+                y: edge.x,
+                z: edge.z
+            };
+
+            normals.push(normal);
+        }
+
+        return normals;
+    }
+
+    private static projection(points: Point[], axis: Point): {min: number, max: number} {
+        let min = axis.x * points[0].x + axis.y * points[0].y;
+        let max = min;
+
+        for(let i = 1; i < points.length; i++) {
+            let p = axis.x * points[i].x + axis.y * points[i].y;
+
+            if(p < min) {
+                min = p;
+            }
+            else if(p > max) {
+                max = p;
+            }
+        }
+
+        return {min, max};
+    }
+}

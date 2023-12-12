@@ -1,0 +1,26 @@
+{
+    "name": "motor-js",
+    "version": "1.0.0",
+    "author": "Kris",
+    "license": "MIT",
+    "description": "",
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "scripts": {
+        "prepare": "npm run build",
+        "build": "tsc --build",
+        "watch": "tsc --watch",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "homepage": "https://github.com/kearisp/motor-js#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kearisp/motor-js.git"
+    },
+    "bugs": {
+        "url": "https://github.com/kearisp/motor-js/issues"
+    },
+    "devDependencies": {
+        "typescript": "^5.3.3"
+    }
+}
