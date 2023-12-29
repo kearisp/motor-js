@@ -56,8 +56,7 @@ class CanvasContext extends Context {
         this.context.clearRect(0, 0, this.getWidth(), this.getHeight());
     }
 
-    public requestPointerLock(): Promise<any> {
-        // @ts-ignore
+    public requestPointerLock(): void {
         return this.canvas.requestPointerLock();
     }
 

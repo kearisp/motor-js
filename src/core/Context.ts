@@ -28,7 +28,7 @@ abstract class Context {
     public abstract fillPolygon(points: Point2D[]): void;
     public abstract render(root: HTMLElement): void;
     public abstract clear(): void;
-    public abstract requestPointerLock(): Promise<any>;
+    public abstract requestPointerLock(): void;
 }
 
 

@@ -71,8 +71,7 @@ class SVGContext extends Context {
         }
     }
 
-    public requestPointerLock(): Promise<any> {
-        // @ts-ignore
+    public requestPointerLock(): void {
         return this.svg.requestPointerLock();
     }
 

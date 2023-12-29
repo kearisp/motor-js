@@ -6,8 +6,6 @@ import {BSPNode} from "./BSPNode";
 export class Polygon {
     public id?: string;
     public node?: BSPNode;
-    public sum?: number;
-    public distance: number = 0;
     public color?: string;
     public normal: Point;
 
@@ -97,7 +95,20 @@ export class Polygon {
         };
     }
 
-    public isContainPoint(p: Point): boolean {
+    public isOnSamePlane(p: Point): boolean {
+        const [point] = this.points;
+
+        if(!point) {
+            return false;
+        }
+
+        const normal = this.getNormal();
+        const dot = Vector.dot(Vector.subtract(p, point), normal);
+
+        return Math.abs(dot) < 0.0001;
+    }
+
+    public isContainPointV1(p: Point): boolean {
         let inside = false;
 
         for(let i = 0; i < this.points.length; i++) {
@@ -128,24 +139,48 @@ export class Polygon {
         return inside;
     }
 
-    public isOnSamePlane(p: Point): boolean {
-        const normal = this.getNormal();
-        const referencePoint  = this.points[0];
+    public isContainPointV2(point: Point): boolean {
+        let sum = 0;
 
-        const dotProduct = ((p.x - referencePoint.x) * normal.x)
-            + ((p.y - referencePoint.y) * normal.y)
-            + ((p.z - referencePoint.z) * normal.z);
+        for(let i = 0; i < this.points.length; i++) {
+            const a1 = this.points[i];
+            const a2 = this.points[(i + 1) % this.points.length];
+            const vector = Vector.subtract(a2, a1);
 
-        return Math.abs(dotProduct) < 0.0001;
-        // Де 0,0001 - це точність декількох знаків після коми,
-        // може бути адаптовано в залежності від ваших потреб.
+            const t = Vector.dot(vector, Vector.subtract(point, a1)) / Vector.dot(vector, vector);
+
+            const epsilon = 0.000001;
+            if(t > epsilon && t < (1 - epsilon)) {
+                sum += Vector.angle(Vector.subtract(a2, point), Vector.subtract(a1, point));
+            }
+        }
+
+        return Math.abs(sum - Math.PI * 2) <= 0.01;
+    }
+
+    public isContainPointV3(point: Point): boolean {
+        for(let i = 0; i < this.points.length; i++) {
+            const p1 = this.points[i];
+            const p2 = this.points[(i + 1) % this.points.length];
+
+            const side1: Point = Vector.subtract(p2, p1);
+            const side2: Point = Vector.subtract(point, p1);
+
+            let crossProduct: Point = Vector.cross(side1, side2);
+
+            if(Vector.dot(this.getNormal(), crossProduct) <= -1) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static isIntersect(A: Polygon, B: Polygon): boolean {
         return false;
     }
 
-    public static intersect(A: Polygon, B: Polygon): Polygon[] {
+    public static intersect(A: Polygon, B: Polygon, debug?: boolean): Polygon[] {
         let before: Point[] = [];
         let after: Point[] = [];
 
@@ -168,16 +203,22 @@ export class Polygon {
                 const b2 = B.points[(j + 1) % B.points.length];
                 const b3 = B.points[(j + 2) % B.points.length];
 
-                const intersectPoint = Vector.intersectWithTriangle(a1, vector, b1, b2, b3);
+                const intersectPoint = Vector.intersectPlaneV2(a1, vector, b1, b2, b3);
 
-                if(intersectPoint && A.isContainPoint(intersectPoint)) {
-                    if(isBefore) {
-                        before.push(intersectPoint);
-                        after.push(intersectPoint);
+                if(intersectPoint && Vector.distance(Vector.subtract(a1, intersectPoint)) < 0) {
+                    continue;
+                }
+
+                if(intersectPoint && A.isContainPointV3(intersectPoint)) {
+                    if(debug) {
+                        console.log("intersectPoint:", intersectPoint);
                     }
-                    else {
-                        before.push(intersectPoint);
-                        after.push(intersectPoint);
+
+                    before.push(intersectPoint);
+                    after.push(intersectPoint);
+
+                    if(debug) {
+                        debugger;
                     }
 
                     isBefore = !isBefore;
@@ -186,10 +227,19 @@ export class Polygon {
             }
         }
 
-        return [
-            new Polygon(before),
-            new Polygon(after)
-        ];
+        if(after.length === 0) {
+            return [A];
+        }
+
+        const ABefore = new Polygon(before);
+        ABefore.setId(`${A.id}.before`);
+        ABefore.color = A.color;
+
+        const AAfter = new Polygon(after);
+        AAfter.setId(`${A.id}.after`);
+        AAfter.color = A.color;
+
+        return [ABefore, AAfter];
     }
 
     private static getNormals(points: Point[]): Point[] {

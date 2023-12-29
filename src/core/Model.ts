@@ -1,9 +1,17 @@
 import {Point} from "../types/Point";
 import {Vector} from "./Vector";
+import {Polygon} from "./Polygon";
+import {Observable} from "../events/Observable";
 import {calcDirectionMatrix} from "../utils/calcDirectionMatrix";
 
 
-export class Model {
+type ModelEvents = {
+    click: {
+        type: "click";
+    };
+};
+
+export class Model extends Observable<ModelEvents> {
     protected id?: string;
     protected scale: number = 1;
     protected position: Point;
@@ -14,6 +22,8 @@ export class Model {
     protected polygons: number[][] = [];
 
     public constructor(position?: Point) {
+        super();
+
         this.position = position || {x: 0, y: 0, z: 0};
 
         this.rotationMatrix = this.calcDirectionMatrix();
@@ -45,6 +55,16 @@ export class Model {
         return this.polygons;
     }
 
+    public getPolygons2(): Polygon[] {
+        return this.polygons.map((indexes) => {
+            const points = indexes.map((index) => {
+                return this.points[index];
+            });
+
+            return new Polygon(points);
+        });
+    }
+
     public getScale(): number {
         return this.scale;
     }
@@ -68,7 +88,7 @@ export class Model {
         this.rotationMatrix = this.calcDirectionMatrix();
     }
 
-    protected calcDirectionMatrix() {
+    protected calcDirectionMatrix(): number[][] {
         return calcDirectionMatrix(this.rotationDirection, this.rotation);
     }
 
