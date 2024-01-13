@@ -1,5 +1,9 @@
-import {Context} from "../core/Context";
 import {Point2D} from "../types/Point2D";
+import {Context} from "../core/Context";
+import {Polygon} from "../core/Polygon";
+import {Model} from "../core/Model";
+import {Camera} from "../core/Camera";
+import {BSPNode} from "../core/BSPNode";
 
 
 class SVGContext extends Context {
@@ -13,6 +17,10 @@ class SVGContext extends Context {
         this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         this.svg.setAttribute("width", "100%");
         this.svg.setAttribute("height", "100%");
+    }
+
+    public get domElement(): HTMLElement {
+        return this.svg as unknown as HTMLElement;
     }
 
     protected createSVGElement(type: string) {
@@ -40,6 +48,10 @@ class SVGContext extends Context {
         this.svg.appendChild(line);
     }
 
+    public drawPolygon(polygon: Polygon) {
+        // TODO
+    }
+
     public fillRect(x: number, y: number, w: number, h: number) {
         const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
 
@@ -57,7 +69,7 @@ class SVGContext extends Context {
 
         polygon.setAttribute("style", `fill: ${this.fillStyle}`);
         polygon.setAttribute("points", points.map((point) => {
-            return `${point.x},${point.y}`;
+            return `${this.getWidth() / 2 + point.x},${this.getHeight() / 2 - point.y}`;
         }).join(" "));
         polygon.setAttribute("stroke-width", "0.9");
         polygon.setAttribute("stroke", "black");
@@ -71,12 +83,18 @@ class SVGContext extends Context {
         }
     }
 
-    public requestPointerLock(): void {
-        return this.svg.requestPointerLock();
+    public render(models: Model[], camera: Camera): void {
+        //
     }
 
-    public render(root: HTMLElement) {
-        root.append(this.svg);
+    public renderPolygons(polygons: Polygon[], camera: Camera) {
+        const bspNode = new BSPNode(polygons, camera, false);
+
+        bspNode.traverse({x: 0, y: 0, z: -1}, (polygon: Polygon): void => {
+            this.setStrokeStyle("#445555");
+            this.setFillStyle(polygon.color || "#990000");
+            this.fillPolygon(polygon.project(camera.getFov()).points);
+        });
     }
 }
 

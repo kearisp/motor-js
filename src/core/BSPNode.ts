@@ -1,5 +1,6 @@
 import {Polygon} from "./Polygon";
 import {Vector} from "./Vector";
+import {Camera} from "./Camera";
 import {Point} from "../types/Point";
 
 
@@ -11,23 +12,27 @@ export class BSPNode {
     public front: BSPNode | null;
     public back: BSPNode | null;
     protected debug: boolean = false;
+    protected camera: Camera;
 
-    public constructor([root, ...polygons]: Polygon[], debug: boolean = false) {
-        this.root = root;
-        this.debug = debug;
+    public constructor(polygons: Polygon[], camera: Camera, debug: boolean = false) {
+        this.camera = camera;
 
         const front: Polygon[] = [];
         const back: Polygon[] = [];
 
-        for(const polygon of polygons) {
-            const intersects = Polygon.intersect(polygon, root, this.debug);
+        const [root, ...rest] = polygons.sort((a, b) => {
+            // return Vector.distance(b.getCenter()) - Vector.distance(a.getCenter());
+            return Vector.distance(a.getCenter()) - Vector.distance(b.getCenter());
+        });
+
+        this.root = root;
+        this.debug = debug;
+
+        for(const polygon of rest) {
+            const intersects = Polygon.intersect(polygon, root);
 
             for(const intersect of intersects) {
                 const type = this.classifyPolygon(intersect);
-
-                // if(this.debug) {
-                //     console.log(type, this.root.id, intersect.id);
-                // }
 
                 switch(type) {
                     case "front":
@@ -49,241 +54,132 @@ export class BSPNode {
             }
         }
 
-        this.front = front.length > 0 ? new BSPNode(front, this.debug) : null;
-        this.back = back.length > 0 ? new BSPNode(back, this.debug) : null;
+        this.front = front.length > 0 ? new BSPNode(front, camera, this.debug) : null;
+        this.back = back.length > 0 ? new BSPNode(back, camera, this.debug) : null;
     }
 
     public classifyPolygon(polygon: Polygon): Type {
-        // return this.classifyPolygonV1(polygon);
-        // return this.classifyPolygonV2(polygon);
-        // return this.classifyPolygonV3(polygon);
-        return this.classifyPolygonV4(polygon);
+        return this.isInFront(polygon) ? "front" : "back";
     }
 
-    public classifyPolygonV1(polygon: Polygon): Type {
-        const epsilon = 0.00001; // for numerical stability
-        // const epsilon = 0; // for numerical stability
-        const dot = Vector.dot(this.root.getNormal(), polygon.getNormal());
-
-        if(dot > epsilon) {
-            return "front";
-        }
-        else if(dot < -epsilon) {
-            return "back";
-        }
-        else {
-            return "coplanar";
-        }
+    protected isInFront(polygon: Polygon): boolean {
+        return this.isInFrontV1(polygon);
+        // return this.isInFrontV2(polygon);
     }
 
-    public classifyPolygonV2(polygon: Polygon): Type {
-        const dot = Vector.dot(this.root.getNormal(), polygon.getNormal());
-
-        if(dot > 0) {
-            return "front";
-        }
-
-        return "back";
-    }
-
-    public classifyPolygonV3(polygon: Polygon): Type {
-        return this.root.getCenter().z > polygon.getCenter().z ? "front" : "back";
-    }
-
-    public classifyPolygonV4(polygon: Polygon): Type {
-        return this.isInFrontV3(polygon) ? "front" : "back";
-    }
-
-    private isInFront(position: Point, direction: Point) {
-        // const viewVector = Vector.subtract(this.root.points[0], position);
-        // const viewVector = Vector.subtract(this.root.getCenter(), position);
-        const viewVector = this.root.getCenter();
-        const viewDotProduct = Vector.dot(viewVector, direction);
-
-        if(viewDotProduct < 0) {
-            return false;
-        }
-
-        return Vector.dot(viewVector, this.root.getNormal()) > 0;
-    }
-
-    private isInFrontV2(polygon: Polygon) {
-        return this.root.getCenter().z > polygon.getCenter().z;
-    }
-
-    private isInFrontV3(polygon: Polygon) {
+    protected isInFrontV1(polygon: Polygon): boolean {
         const vector = Vector.subtract(this.root.getCenter(), polygon.getCenter());
 
         return Vector.dot(this.root.getNormal(), vector) < 0;
-        // const position = {
-        //     x: 0,
-        //     y: 0,
-        //     z: -100
-        // };
-        //
-        // return Vector.dot(position, this.root.getCenter()) < Vector.dot(position, polygon.getCenter());
-        // return Vector.dot(this.root.getCenter(), polygon.getCenter());
     }
 
-    public traverse(position: Point, direction: Point, render: Render): void {
+    protected isInFrontV2(polygon: Polygon): boolean {
+        const direction = {
+            x: 0,
+            y: 0,
+            z: -1
+        };
+
+        const viewVector = Vector.subtract(this.root.getCenter(), direction);
+
+        const normal = this.root.getNormal();
+
+        const dotProduct = Vector.dot(normal, viewVector);
+        const magnitudeProduct = Vector.magnitude(normal) * Vector.magnitude(viewVector);
+        const cosTheta = dotProduct / magnitudeProduct;
+
+        return cosTheta > 0;
+    }
+
+    public traverse(direction: Point, render: Render): void {
         if(!this.root) {
             return;
         }
 
-        // this.traverseV1(position, direction, render);
-        // this.traverseV2(position, direction, render);
-        // this.traverseV3(position, direction, render);
-        this.traverseV4(direction, render);
+        this.traverseV1(direction, render);
+        // this.traverseV2(direction, render);
     }
 
-    public traverseV1(position: Point, direction: Point, render: Render) {
-        let type = this.isInFront(position, direction) ? "front" : "back";
-        // let type = this.isInFrontV2();
-
-        if(type === "back" && this.classifyPolygon(this.root) === "back") {
-            type = "front";
-        }
-
-        switch(type) {
-            case "front":
-                if(this.back) {
-                    this.back.traverseV1(position, direction, render);
-                }
-
-                render(this.root);
-
-                if(this.front) {
-                    this.front.traverseV1(position, direction, render);
-                }
-                break;
-
-            case "back":
-                if(this.front) {
-                    this.front.traverseV1(position, direction, render);
-                }
-
-                render(this.root);
-
-                if(this.back) {
-                    this.back.traverseV1(position, direction, render);
-                }
-                break;
-
-            // case "coplanar":
-            //     render(this.root);
-            //     break;
-        }
-    }
-
-    public traverseV2(position: Point, direction: Point, render: Render): void {
-        if(Vector.areCoDirected(direction, this.root.getNormal())) {
-            if(Vector.dot(position, this.root.getNormal()) >= 0) {
-                if(this.back) {
-                    this.back.traverseV2(position, direction, render);
-                }
-
-                render(this.root);
-
-                if(this.front) {
-                    this.front.traverseV2(position, direction, render);
-                }
-            }
-            else {
-                if(this.front) {
-                    this.front.traverseV2(position, direction, render);
-                }
-            }
-        }
-        else {
-            if(Vector.dot(position, this.root.getNormal()) >= 0) {
-                if(this.front) {
-                    this.front.traverseV2(position, direction, render);
-                }
-
-                render(this.root);
-
-                if(this.back) {
-                    this.back.traverseV2(position, direction, render);
-                }
-            }
-            else {
-                // if(this.front) {
-                //     this.front.traverseV2(position, direction, render);
-                // }
-                //
-                // render(this.root);
-
-                if(this.back) {
-                    this.back.traverseV2(position, direction, render);
-                }
-            }
-        }
-    }
-
-    public traverseV3(position: Point, direction: Point, render: Render): void {
-        if(Vector.areCoDirected(direction, this.root.getNormal())) {
-            if(Vector.dot(position, this.root.getNormal()) >= 0) {
-                if(this.front) {
-                    this.front.traverseV3(position, direction, render);
-                }
-            }
-            else {
-                if(this.front) {
-                    this.front.traverseV3(position, direction, render);
-                }
-
-                render(this.root);
-
-                if(this.back) {
-                    this.back.traverseV3(position, direction, render);
-                }
-            }
-        }
-        else {
-            if(Vector.dot(position, this.root.getNormal()) >= 0) {
-                if(this.back) {
-                    this.back.traverseV3(position, direction, render);
-                }
-
-                render(this.root);
-
-                if(this.front) {
-                    this.front.traverseV3(position, direction, render);
-                }
-            }
-            else {
-                if(this.back) {
-                    this.back.traverseV3(position, direction, render);
-                }
-            }
-        }
-    }
-
-    public traverseV4(direction: Point, render: Render): void {
-        // if(this.debug) {
-        //     console.log(this.root.id, Vector.dot(direction, this.root.getNormal()));
-        // }
-
+    protected traverseV1(direction: Point, render: Render): void {
         if(Vector.dot(this.root.getNormal(), direction) < 0) {
             if(this.front) {
-                this.front.traverseV4(direction, render);
+                this.front.traverseV1(direction, render);
             }
 
             render(this.root);
 
             if(this.back) {
-                this.back.traverseV4(direction, render);
+                this.back.traverseV1(direction, render);
             }
         }
         else {
             if(this.back) {
-                this.back.traverseV4(direction, render);
+                this.back.traverseV1(direction, render);
             }
 
             render(this.root);
 
             if(this.front) {
-                this.front.traverseV4(direction, render);
+                this.front.traverseV1(direction, render);
+            }
+        }
+    }
+
+    protected traverseV2(direction: Point, render: Render): void {
+        let frontFirst = Vector.dot(this.root.getNormal(), direction) < 0;
+
+        const v1 = this.root.getVector1();
+        const v2 = this.root.getVector2();
+
+        const p1 = Vector.multiply(v1, 100),
+            p2 = Vector.multiply(v1, -100),
+            p3 = Vector.summary(this.root.getCenter(), Vector.multiply(v2, -100)),
+            p4 = Vector.summary(this.root.getCenter(), Vector.multiply(v2, 100));
+
+        const d1 = this.camera.projectPoint(p1),
+            d2 = this.camera.projectPoint(p2),
+            d3 = this.camera.projectPoint(p3),
+            d4 = this.camera.projectPoint(p4);
+
+        const log = [
+            // "\n", "p1=", {x: p1.x, y: p1.y},
+            // "\n", "p2=", {x: p2.x, y: p2.y},
+            "\n", "p3=", {x: p3.x, y: p3.y},
+            "\n", "p4=", {x: p4.x, y: p4.y},
+            // "\n", "d1=", d1,
+            // "\n", "d2=", d2,
+            "\n", "d3=", d3,
+            "\n", "d4=", d4
+        ];
+
+        if(Math.abs(p3.x - p4.x) < 0.3 && p3.y > p4.y && d3.y < d4.y) {
+            if(this.debug) {
+                console.log(this.root.id, "y changed 1", ...log);
+            }
+
+            frontFirst = !frontFirst;
+        }
+
+        if(frontFirst) {
+            if(this.front) {
+                this.front.traverseV2(direction, render);
+            }
+
+            render(this.root);
+
+            if(this.back) {
+                this.back.traverseV2(direction, render);
+            }
+        }
+        else {
+            if(this.back) {
+                this.back.traverseV2(direction, render);
+            }
+
+            render(this.root);
+
+            if(this.front) {
+                this.front.traverseV2(direction, render);
             }
         }
     }

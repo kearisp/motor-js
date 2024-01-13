@@ -1,30 +1,25 @@
+import {mat4} from "gl-matrix";
+
 import {Context} from "./Context";
-import {DataProvider} from "./DataProvider";
-import {Model} from "./Model";
 import {Vector} from "./Vector";
-import {Polygon} from "./Polygon";
 import {Point} from "../types/Point";
 import {Point2D} from "../types/Point2D";
 import {Observable} from "../events/Observable";
-import {BSPNode} from "./BSPNode";
 import {calcCameraRotationMatrixV2} from "../utils/calcCameraRotationMatrix";
 
 
 export class Camera extends Observable<ListenerTypes> {
-    protected debug: boolean = false;
-    protected isRunning = false;
-    protected fov: number = 100;
+    protected isDebug: boolean = false;
+    protected fov: number = 45;
     protected pitch: number = 0;
     protected yaw: number = 0;
     protected roll: number = 0;
     protected position: Vector;
     protected direction: Vector;
     protected rotationMatrix: number[][];
-    protected bspNode?: BSPNode;
 
     public constructor(
         protected context: Context,
-        protected dataProvider: DataProvider,
         position: Point = {x: 0, y: 0, z: 0},
         direction: Point = {x: 0, y: 0, z: 1}
     ) {
@@ -57,8 +52,42 @@ export class Camera extends Observable<ListenerTypes> {
         return this.transformPointToCameraView(point);
     }
 
-    public getModels() {
-        return this.dataProvider.getModels();
+    public getProjectionMatrix() {
+        return this.getProjectionMatrixV2();
+    }
+
+    public getProjectionMatrixV1() {
+        return [
+            [2 / (this.context.getWidth()), 0, 0, 0],
+            [0, 2 / (this.context.getHeight()), 0, 0],
+            [0, 0, -2 / (this.context.getHeight()), 0],
+            [-1, 1, 0, 1]
+        ];
+    }
+
+    public getProjectionMatrixV2() {
+        const fieldOfView = (this.fov * Math.PI) / 180; // in radians
+        const aspect = this.context.getWidth() / this.context.getHeight();
+        const zNear = -100;
+        const zFar = 0.0;
+        const projectionMatrix = mat4.create();
+
+        // note: glmatrix.js always has the first argument
+        // as the destination to receive the result.
+        mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+
+        const matrix: number[][] = [];
+
+        for(let i = 0; i < 4; i++) {
+            matrix[i] = [
+                projectionMatrix[i * 4],
+                projectionMatrix[i * 4 + 1],
+                projectionMatrix[i * 4 + 2],
+                projectionMatrix[i * 4 + 3]
+            ];
+        }
+
+        return matrix;
     }
 
     public transformPointToCameraView(point: Point): Point {
@@ -85,6 +114,7 @@ export class Camera extends Observable<ListenerTypes> {
         }
 
         const scale = this.fov / (this.fov + z / 3);
+        // const scale = 1;
 
         return {
             x: scale * x,
@@ -102,6 +132,10 @@ export class Camera extends Observable<ListenerTypes> {
         this.emit("fovChange", {
             fov: this.fov
         });
+    }
+
+    public setDebug(debug: boolean) {
+        this.isDebug = debug;
     }
 
     public getDirection(): Point {
@@ -141,11 +175,6 @@ export class Camera extends Observable<ListenerTypes> {
         });
     }
 
-    public getYaw() {
-        // return Math.atan2(this.direction.z, this.direction.x) * (180 / Math.PI);
-        return this.yaw;
-    }
-
     public getPitch() {
         // return Math.asin(this.direction.y) * (180 / Math.PI);
         return this.pitch;
@@ -153,6 +182,11 @@ export class Camera extends Observable<ListenerTypes> {
 
     public setPitch(pitch: number) {
         this.setDirectionFromAngles(pitch, this.yaw);
+    }
+
+    public getYaw() {
+        // return Math.atan2(this.direction.z, this.direction.x) * (180 / Math.PI);
+        return this.yaw;
     }
 
     public setYaw(yaw: number) {
@@ -165,113 +199,6 @@ export class Camera extends Observable<ListenerTypes> {
 
     public setRoll(roll: number): void {
         this.roll = roll;
-    }
-
-    public update(): void {
-        this.context.clear();
-
-        const polygons = this.getModels().reduce((polygons: Polygon[], model: Model, modelIndex: number) => {
-            const position = model.getPosition();
-            const points = model.getPoints();
-
-            return [
-                ...polygons,
-                ...model.getPolygons().map((indexes, polygonIndex) => {
-                    const polygonPoints = indexes.map((index) => {
-                        const point = points[index];
-
-                        return this.transformPointToCameraView({
-                            x: position.x + point.x - this.position.x,
-                            y: position.y + point.y - this.position.y,
-                            z: position.z + point.z - this.position.z
-                        });
-                    });
-
-                    const polygon = new Polygon(polygonPoints);
-
-                    polygon.setId(`#${model.getId()}.${polygonIndex}`);
-                    polygon.color = `hsl(${(modelIndex) * 100 + polygonIndex * 15}, 100%, 50%)`;
-
-                    return polygon;
-                })
-            ];
-        }, []);
-
-        const bspNode = new BSPNode(polygons, this.debug);
-
-        bspNode.traverse({x: 0, y: 0, z: 0}, {x: 0, y: 0, z: -1}, (polygon) => {
-            if(this.debug) {
-                console.log(polygon.id);
-            }
-
-            const polygonPoints = polygon.points.map((point: Point): Point2D => {
-                const {x, y} = this.projectPoint(point);
-
-                return {
-                    x: this.context.getWidth() / 2 + x,
-                    y: this.context.getHeight() / 2 - y
-                };
-            }).filter((point: Point2D) => {
-                if(isNaN(point.x) || isNaN(point.y)) {
-                    debugger;
-                }
-
-                return !isNaN(point.x) && !isNaN(point.y);
-            });
-
-            if(polygonPoints.length > 0) {
-                // this.context.setStrokeStyle("#000000");
-                this.context.setStrokeStyle("#335555");
-                this.context.setFillStyle(polygon.color || "#CC0000");
-                this.context.fillPolygon(polygonPoints);
-
-                // const center = this.projectPoint(polygon.getCenter());
-                // const normal = this.projectPoint(
-                //     Vector.summary(
-                //         polygon.getCenter(),
-                //         Vector.multiply(polygon.getNormal(), 50)
-                //     )
-                // );
-                //
-                // this.context.drawLine({
-                //     x: this.context.getWidth() / 2 + center.x,
-                //     y: this.context.getHeight() / 2 - center.y
-                // }, {
-                //     x: this.context.getWidth() / 2 + normal.x,
-                //     y: this.context.getHeight() / 2 - normal.y
-                // });
-            }
-        });
-
-        if(this.debug) {
-            this.debug = false;
-            debugger;
-        }
-    }
-
-    public run() {
-        this.isRunning = true;
-
-        this.loop();
-    }
-
-    public destroy() {
-        this.isRunning = false;
-    }
-
-    public activateDebug() {
-        this.debug = true;
-    }
-
-    protected loop(): void {
-        if(!this.isRunning) {
-            return;
-        }
-
-        requestAnimationFrame(() => {
-            this.update();
-            this.loop();
-        });
     }
 }
 

@@ -89,6 +89,12 @@ export class Vector {
         return Math.sqrt(a.x ** 2 + a.y ** 2 + a.z ** 2);
     }
 
+    public static distanceBetween(a: Point, b: Point): number {
+        const v = Vector.subtract(b, a);
+
+        return Vector.distance(v);
+    }
+
     public static normalize(a: Point): Point {
         const length = Math.sqrt(a.x ** 2 + a.y ** 2 + a.z ** 2);
 
@@ -123,25 +129,25 @@ export class Vector {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
-    public static intersectPlaneV1(rayOrigin: Point, rayVector: Point, v0: Point, v1: Point, v2: Point): Point | null {
+    public static intersectPlaneV1(point: Point, direction: Point, v0: Point, v1: Point, v2: Point): Point | null {
         const EPSILON = 0.0000001;
         const edge1 = Vector.subtract(v1, v0);
         const edge2 = Vector.subtract(v2, v0);
         const planeNormal = Vector.cross(edge1, edge2);
 
-        const denominator = Vector.dot(planeNormal, rayVector);
+        const denominator = Vector.dot(planeNormal, direction);
 
         if(Math.abs(denominator) < EPSILON) {
             return null;
         }
 
-        const t = Vector.dot(planeNormal, Vector.subtract(v0, rayOrigin)) / denominator;
+        const t = Vector.dot(planeNormal, Vector.subtract(v0, point)) / denominator;
 
         if(t < 0) {
             return null;
         }
 
-        return Vector.summary(rayOrigin, Vector.multiply(rayVector, t));
+        return Vector.summary(point, Vector.multiply(direction, t));
     }
 
     public static intersectPlaneV2(point: Point, direction: Point, v0: Point, v1: Point, v2: Point): Point | null {
@@ -195,7 +201,11 @@ export class Vector {
         return intersectPoint;
     }
 
-    public static areCoDirected(pt1: Point, pt2: Point): boolean {
+    public static areCoDirected(p1: Point, p2: Point): boolean {
+        return Vector.areCoDirectedV2(p1, p2);
+    }
+
+    public static areCoDirectedV1(pt1: Point, pt2: Point): boolean {
         // calculate ratios for each pair of coordinates
         const ratioX = pt1.x / pt2.x;
         const ratioY = pt1.y / pt2.y;
@@ -216,5 +226,27 @@ export class Vector {
 
         // vectors are co-directed
         return true;
+    }
+
+    public static getAngle(p1: Point, p2: Point) {
+        const dot = Vector.dot(p1, p2);
+
+        const d1 = Vector.distance(p1);
+        const d2 = Vector.distance(p2);
+
+        const cosAngle = dot / (d1 * d2);
+
+        return Math.acos(cosAngle) * (180 / Math.PI);
+    }
+
+    public static areCoDirectedV2(p1: Point, p2: Point): boolean {
+        const dot = Vector.dot(p1, p2);
+
+        const d1 = Vector.distance(p1);
+        const d2 = Vector.distance(p2);
+
+        const cosAngle = dot / (d1 * d2);
+
+        return cosAngle <= Math.cos(Math.PI / 180 * 90);
     }
 }

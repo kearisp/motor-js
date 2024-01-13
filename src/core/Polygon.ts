@@ -1,6 +1,8 @@
 import {Point} from "../types/Point";
 import {Vector} from "./Vector";
 import {BSPNode} from "./BSPNode";
+import {Polygon2D} from "./Polygon2D";
+import {Point2D} from "../types/Point2D";
 
 
 export class Polygon {
@@ -95,6 +97,22 @@ export class Polygon {
         };
     }
 
+    public getVector1(): Point {
+        // return Vector.normalize(Vector.subtract(this.points[0], this.points[1]));
+        return Vector.normalize(Vector.cross(this.getNormal(), {x: 0, y: 0, z: -1}));
+    }
+
+    public getVector2(): Point {
+        // return Vector.normalize(Vector.cross(this.getVector1(), this.getNormal()));
+        return Vector.normalize(Vector.cross(this.getNormal(), {x: 1, y: 0, z: 0}));
+    }
+
+    public isInFront(polygon: Polygon) {
+        const vector = Vector.subtract(polygon.getCenter(), this.getCenter());
+
+        return Vector.dot(this.getNormal(), vector) > 0;
+    }
+
     public isOnSamePlane(p: Point): boolean {
         const [point] = this.points;
 
@@ -108,7 +126,11 @@ export class Polygon {
         return Math.abs(dot) < 0.0001;
     }
 
-    public isContainPointV1(p: Point): boolean {
+    public isContainPoint(p: Point): boolean {
+        return this.isContainPointV3(p);
+    }
+
+    protected isContainPointV1(p: Point): boolean {
         let inside = false;
 
         for(let i = 0; i < this.points.length; i++) {
@@ -139,7 +161,7 @@ export class Polygon {
         return inside;
     }
 
-    public isContainPointV2(point: Point): boolean {
+    protected isContainPointV2(point: Point): boolean {
         let sum = 0;
 
         for(let i = 0; i < this.points.length; i++) {
@@ -158,7 +180,7 @@ export class Polygon {
         return Math.abs(sum - Math.PI * 2) <= 0.01;
     }
 
-    public isContainPointV3(point: Point): boolean {
+    protected isContainPointV3(point: Point): boolean {
         for(let i = 0; i < this.points.length; i++) {
             const p1 = this.points[i];
             const p2 = this.points[(i + 1) % this.points.length];
@@ -176,11 +198,37 @@ export class Polygon {
         return true;
     }
 
+    public project(fov?: number): Polygon2D {
+        const points: Point2D[] = this.points.map((point: Point): Point2D => {
+            if(typeof fov === "undefined") {
+                return {
+                    x: point.x,
+                    y: point.y
+                };
+            }
+
+            if(point.z / 3 <= -fov) {
+                return {x: NaN, y: NaN};
+            }
+
+            const scale = fov / (fov + point.z / 3);
+
+            return {
+                x: scale * point.x,
+                y: scale * point.y
+            };
+        }).filter((point: Point2D) => {
+            return !isNaN(point.x) && !isNaN(point.y);
+        });
+
+        return new Polygon2D(points);
+    }
+
     public static isIntersect(A: Polygon, B: Polygon): boolean {
         return false;
     }
 
-    public static intersect(A: Polygon, B: Polygon, debug?: boolean): Polygon[] {
+    public static intersect(A: Polygon, B: Polygon): Polygon[] {
         let before: Point[] = [];
         let after: Point[] = [];
 
@@ -209,17 +257,13 @@ export class Polygon {
                     continue;
                 }
 
-                if(intersectPoint && A.isContainPointV3(intersectPoint)) {
-                    if(debug) {
-                        console.log("intersectPoint:", intersectPoint);
-                    }
+                if(intersectPoint && A.isContainPoint(intersectPoint)) {
+                    // if(debug) {
+                    //     console.log("intersectPoint:", intersectPoint);
+                    // }
 
                     before.push(intersectPoint);
                     after.push(intersectPoint);
-
-                    if(debug) {
-                        debugger;
-                    }
 
                     isBefore = !isBefore;
                     break;

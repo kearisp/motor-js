@@ -1,9 +1,11 @@
 import {SVGContext} from "../context/SVGContext";
 import {CanvasContext} from "../context/CanvasContext";
+import {WebGLContext} from "../context/WebGLContext";
 import {Camera} from "./Camera";
 import {Context} from "./Context";
 import {DataProvider} from "./DataProvider";
 import {Model} from "./Model";
+import {Polygon} from "./Polygon";
 import {Point} from "../types/Point";
 
 
@@ -12,8 +14,10 @@ class Scene {
     protected context: Context;
     protected dataProvider: DataProvider;
     protected isLooping = false;
+    protected isDebug = false;
+    protected models: Model[] = [];
 
-    public constructor(context: "svg" | "canvas" | Context) {
+    public constructor(context: "svg" | "canvas" | "webgl" | Context) {
         switch(context) {
             case "svg":
                 this.context = new SVGContext();
@@ -23,13 +27,17 @@ class Scene {
                 this.context = new CanvasContext();
                 break;
 
+            case "webgl":
+                this.context = new WebGLContext();
+                break;
+
             default:
                 this.context = context;
                 break;
         }
 
         this.dataProvider = new DataProvider();
-        this.camera = new Camera(this.context, this.dataProvider);
+        this.camera = new Camera(this.context);
     }
 
     public getContext() {
@@ -40,17 +48,61 @@ class Scene {
         return this.camera;
     }
 
-    public async requestPointerLock() {
-        return this.context.requestPointerLock();
+    public requestPointerLock(): void {
+        this.context.domElement.requestPointerLock();
     }
 
-    public update() {
-        for(const model of this.dataProvider.getModels()) {
-            //
+    public debug(): void {
+        this.isDebug = true;
+        this.camera.setDebug(true);
+    }
+
+    protected debugger(): boolean {
+        if(this.isDebug) {
+            this.isDebug = false;
+            this.camera.setDebug(false);
+
+            return true;
         }
+
+        return this.isDebug;
     }
 
-    public add(model: Model, position?: Point, id?: string) {
+    public update(): void {
+        this.context.clear();
+
+        const polygons = this.models.map((model: Model, modelIndex) => {
+            const position = model.getPosition();
+            const points = model.getPoints();
+
+            return model.getPolygons().map((indexes, polygonIndex) => {
+                const polygonPoints = indexes.map((index) => {
+                    const point = points[index];
+
+                    return this.camera.transformPointToCameraView({
+                        x: position.x + point.x - this.camera.getPosition().x,
+                        y: position.y + point.y - this.camera.getPosition().y,
+                        z: position.z + point.z - this.camera.getPosition().z
+                    });
+                });
+
+                const polygon = new Polygon(polygonPoints);
+
+                polygon.setId(`${model.getId()}.${polygonIndex}`)
+                polygon.color = `hsl(${(modelIndex) * 100 + polygonIndex * 15}, 100%, 50%)`;
+
+                return polygon;
+            });
+        }).flat();
+
+        // this.context.render(this.models, this.camera);
+        this.context.renderPolygons(polygons, this.camera);
+
+        if(this.debugger())
+            debugger;
+    }
+
+    public add(model: Model, position?: Point, id?: string): void {
         if(id) {
             model.setId(id);
         }
@@ -59,29 +111,40 @@ class Scene {
             model.setPosition(position);
         }
 
+        this.models.push(model);
+        this.context.addModel(model);
         this.dataProvider.addModel(model);
     }
 
-    public run(root: HTMLElement) {
-        const {width, height} = root.getBoundingClientRect();
+    public remove(model: Model): void {
+        this.models = this.models.filter((m) => {
+            return m !== model;
+        });
 
-        this.context.setWidth(width);
-        this.context.setHeight(height);
+        this.context.removeModel(model);
+    }
+
+    public run(root: HTMLElement): void {
+        const {width, height} = root.getBoundingClientRect();
 
         while(root.firstChild) {
             root.removeChild(root.firstChild);
         }
 
-        this.context.render(root);
+        root.append(this.context.domElement);
+        this.context.setSizes(width, height)
 
-        this.camera.run();
+        if(!this.isLooping) {
+            this.isLooping = true;
+            this.loop();
+        }
     }
 
-    public stop() {
-        this.camera.destroy();
+    public stop(): void {
+        this.isLooping = false;
     }
 
-    protected loop() {
+    protected loop(): void {
         if(!this.isLooping) {
             return;
         }

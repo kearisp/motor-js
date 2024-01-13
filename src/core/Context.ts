@@ -1,9 +1,13 @@
-import {Point2D} from "../types/Point2D";
+import {Polygon} from "./Polygon";
+import {Model} from "./Model";
+import {Camera} from "./Camera";
 
 
 abstract class Context {
     protected width: number = 0;
     protected height: number = 0;
+    protected fov: number = 45;
+    protected models: Model[] = [];
 
     public getWidth(): number {
         return this.width;
@@ -11,6 +15,11 @@ abstract class Context {
 
     public getHeight(): number {
         return this.height;
+    }
+
+    public setSizes(width: number, height: number) {
+        this.setWidth(width);
+        this.setHeight(height);
     }
 
     public setWidth(width: number): void {
@@ -21,14 +30,26 @@ abstract class Context {
         this.height = height;
     }
 
-    public abstract setFillStyle(color: string): void;
-    public abstract setStrokeStyle(color: string): void;
-    public abstract drawLine(start: Point2D, end: Point2D): void;
-    public abstract fillRect(x: number, y: number, w: number, h: number): void;
-    public abstract fillPolygon(points: Point2D[]): void;
-    public abstract render(root: HTMLElement): void;
+    public getFov(): number {
+        return this.fov;
+    }
+
+    public setFov(fov: number): void {
+        this.fov = fov;
+    }
+
+    public addModel(model: Model): void {
+        this.models.push(model);
+    }
+
+    public removeModel(model: Model): void {
+        this.models = this.models.filter(m => m !== model);
+    }
+
+    public abstract get domElement(): HTMLElement;
+    public abstract render(models: Model[], camera: Camera): void;
+    public abstract renderPolygons(polygons: Polygon[], camera: Camera): void;
     public abstract clear(): void;
-    public abstract requestPointerLock(): void;
 }
 
 
