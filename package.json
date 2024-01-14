@@ -20,10 +20,10 @@
     "bugs": {
         "url": "https://github.com/kearisp/motor-js/issues"
     },
-    "devDependencies": {
-        "typescript": "^5.3.3"
-    },
     "dependencies": {
         "gl-matrix": "^3.4.3"
+    },
+    "devDependencies": {
+        "typescript": "^5.3.3"
     }
 }

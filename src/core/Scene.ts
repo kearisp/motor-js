@@ -91,7 +91,7 @@ class Scene {
                 const polygon = new Polygon(polygonPoints);
 
                 polygon.setId(`${model.getId()}.${polygonIndex}`)
-                polygon.color = `hsla(${(modelIndex) * 100 + polygonIndex * 15}, 100%, 50%, 0.4)`;
+                polygon.color = `hsla(${(modelIndex) * 100 + polygonIndex * 15}, 100%, 50%, 1)`;
 
                 return polygon;
             });

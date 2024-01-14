@@ -1,6 +1,7 @@
 import {Point} from "../types/Point";
 import {Vector} from "./Vector";
 import {Polygon} from "./Polygon";
+import {Material} from "./Material";
 import {Observable} from "../events/Observable";
 import {calcDirectionMatrix} from "../utils/calcDirectionMatrix";
 
@@ -20,6 +21,7 @@ export class Model extends Observable<ModelEvents> {
     protected rotationMatrix: number[][];
     protected points: Point[] = [];
     protected polygons: number[][] = [];
+    protected material?: Material;
 
     public constructor(position?: Point) {
         super();
@@ -55,14 +57,32 @@ export class Model extends Observable<ModelEvents> {
         return this.polygons;
     }
 
-    public getPolygons2(): Polygon[] {
+    public getPolygonsV2(): Polygon[] {
         return this.polygons.map((indexes) => {
             const points = indexes.map((index) => {
                 return this.points[index];
             });
 
             return new Polygon(points);
-        });
+        }).flat();
+    }
+
+    public getPolygonsV3(): Polygon[] {
+        return this.polygons.map((indexes) => {
+            const points = indexes.map((index) => {
+                return this.points[index];
+            });
+
+            return new Polygon(points).triangulate();
+        }).flat();
+    }
+
+    public getMaterial(): Material | undefined {
+        return this.material;
+    }
+
+    public setMaterial(material: Material): void {
+        this.material = material;
     }
 
     public getScale(): number {

@@ -103,10 +103,22 @@ class CanvasContext extends Context {
     public renderPolygons(polygons: Polygon[], camera: Camera): void {
         const bspNode = new BSPNode(polygons, camera, false);
 
+        const front = new Polygon([
+            {x: -100, y: -100, z: -1000},
+            {x: 100, y: -100, z: -1000},
+            {x: -100, y: -100, z: -1000},
+            {x: 100, y: 100, z: -1000}
+        ]);
+
         bspNode.traverse({x: 0, y: 0, z: 1}, (polygon: Polygon): void => {
             this.setStrokeStyle("#445555");
-            this.setFillStyle(polygon.color || "#990000");
-            this.fillPolygon(polygon.project(camera).points);
+            this.setFillStyle(polygon.color || "#990000")
+
+            const polygons = Polygon.intersect(polygon, front);
+
+            polygons.forEach((polygon) => {
+                this.fillPolygon(polygon.project(camera).points);
+            })
         });
     }
 }

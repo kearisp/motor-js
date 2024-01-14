@@ -11,12 +11,14 @@ export class Polygon {
     public node?: BSPNode;
     public color?: string;
     public normal: Point;
+    public center: Point;
 
     public constructor(
         public points: Point[],
         normal?: Point
     ) {
         this.normal = !normal ? this.calcNormal() : normal;
+        this.center = this.calcCenter();
     }
 
     public setId(id: string) {
@@ -81,6 +83,10 @@ export class Polygon {
     }
 
     public getCenter(): Point {
+        return this.center;
+    }
+
+    private calcCenter(): Point {
         let center: Point = {
             x: 0,
             y: 0,
@@ -108,12 +114,6 @@ export class Polygon {
         return Vector.normalize(Vector.cross(this.getNormal(), {x: 1, y: 0, z: 0}));
     }
 
-    public isInFront(polygon: Polygon) {
-        const vector = Vector.subtract(polygon.getCenter(), this.getCenter());
-
-        return Vector.dot(this.getNormal(), vector) > 0;
-    }
-
     public isOnSamePlane(p: Point): boolean {
         const [point] = this.points;
 
@@ -131,7 +131,7 @@ export class Polygon {
         return this.isContainPointV3(p);
     }
 
-    protected isContainPointV1(p: Point): boolean {
+    protected isContainPointV1(point: Point): boolean {
         let inside = false;
 
         for(let i = 0; i < this.points.length; i++) {
@@ -141,7 +141,7 @@ export class Polygon {
 
             const v0 = Vector.subtract(p3, p1);
             const v1 = Vector.subtract(p2, p1);
-            const v2 = Vector.subtract(p, p1);
+            const v2 = Vector.subtract(point, p1);
 
             const dot00 = Vector.dot(v0, v0);
             const dot01 = Vector.dot(v0, v1);
@@ -216,6 +216,51 @@ export class Polygon {
         return new Polygon2D(points);
     }
 
+    public project2() {
+        type Point = {
+            x: number;
+            y: number;
+            z: number;
+        };
+
+        type Vector = {
+            x: number;
+            y: number;
+            z: number;
+        };
+
+        function dotProduct(n: Vector, p: Point): number {
+            return n.x*p.x + n.y*p.y + n.z*p.z;
+        }
+
+        function scaleVector(n: Vector, scalar: number): Vector {
+            return {
+                x: n.x * scalar,
+                y: n.y * scalar,
+                z: n.z * scalar
+            }
+        }
+
+        function pointDifference(a: Point, b: Point): Point {
+            return {
+                x: a.x - b.x,
+                y: a.y - b.y,
+                z: a.z - b.z
+            }
+        }
+
+        function projectPointOnPlane(p: Point, n: Vector) : Point {
+            let scaledN = scaleVector(n, dotProduct(n, p));
+            return pointDifference(p, scaledN);
+        }
+
+        const projectedPoints = this.points.map((point) => {
+            return projectPointOnPlane(point, Vector.subtract(this.points[0], this.points[1]));
+        });
+
+        return new Polygon2D(projectedPoints);
+    }
+
     public static isIntersect(A: Polygon, B: Polygon): boolean {
         return false;
     }
@@ -243,7 +288,7 @@ export class Polygon {
                 const b2 = B.points[(j + 1) % B.points.length];
                 const b3 = B.points[(j + 2) % B.points.length];
 
-                const intersectPoint = Vector.intersectPlaneV2(a1, vector, b1, b2, b3);
+                const intersectPoint = Vector.intersectPlane(a1, vector, b1, b2, b3);
 
                 if(intersectPoint && Vector.distance(Vector.subtract(a1, intersectPoint)) < 0) {
                     continue;
@@ -319,5 +364,57 @@ export class Polygon {
         }
 
         return {min, max};
+    }
+
+    public triangulate(debug = false): Polygon[] {
+        return this.triangulateV1(debug);
+    }
+
+    protected triangulateV1(debug = false): Polygon[] {
+        const polygons: Polygon[] = [];
+        const points = this.points.slice();
+
+        while(points.length > 3) {
+            let hasCut = false;
+
+            for(let i = 0; i < points.length; i++) {
+                if(points.length === 3) {
+                    break;
+                }
+
+                const p1 = points[i];
+                const p2 = points[(i + 1) % points.length];
+                const p3 = points[(i + 2) % points.length];
+
+                const center: Point = {
+                    x: (p1.x + p3.x) / 2,
+                    y: (p1.y + p3.y) / 2,
+                    z: (p1.z + p3.z) / 2
+                };
+
+                if(this.isContainPoint(center)) {
+                    const polygon = new Polygon([p1, p2, p3]);
+
+                    polygon.color = this.color;
+
+                    polygons.push(polygon);
+
+                    points.splice((i + 1) % points.length, 1);
+                    hasCut = true;
+                }
+            }
+
+            if(!hasCut) {
+                break;
+            }
+        }
+
+        const polygon = new Polygon(points);
+
+        polygon.color = this.color;
+
+        polygons.push(polygon);
+
+        return polygons;
     }
 }

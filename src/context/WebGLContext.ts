@@ -150,7 +150,9 @@ export class WebGLContext extends Context {
 
     public renderPolygons(polygons: Polygon[], camera: Camera): void {
         for(const polygon of polygons) {
-            this.drawPolygon(polygon, camera);
+            polygon.triangulate(this.debug).forEach((polygon) => {
+                this.drawPolygon(polygon, camera);
+            });
         }
     }
 
@@ -202,44 +204,6 @@ export class WebGLContext extends Context {
 
         this.context.uniformMatrix4fv(this.context.getUniformLocation(this.program, "uProjectionMatrix"), false, new Float32Array(camera.getProjectionMatrix().flat()));
         this.context.uniformMatrix4fv(this.context.getUniformLocation(this.program, "uModelViewMatrix"), false, this.getModelViewMatrix(0.0));
-
-        // polygon.points.map((point) => {});
-
-        // this.context.linkProgram(this.program);
-        // this.context.useProgram(this.program);
-
-        // const vertices = polygon.points.map(point => [point.x, point.y, point.z]).flat();
-        // const buffer = this.context.createBuffer();
-        // this.context.bindBuffer(this.context.ARRAY_BUFFER, buffer);
-        // this.context.bufferData(this.context.ARRAY_BUFFER, new Float32Array(vertices), this.context.STATIC_DRAW);
-        // this.context.bindBuffer(this.context.ARRAY_BUFFER, null);
-
-        // this.context.uniformMatrix4fv(this.context.getUniformLocation(this.program, "uProjectionMatrix"), false, this.projectionMatrix);
-
-        // const modelViewMatrix = mat4.create();
-        // mat4.rotate(modelViewMatrix, modelViewMatrix, 0, [0, 0, 1]);
-
-        // this.context.uniformMatrix4fv(
-        //     this.context.getUniformLocation(this.program, "uModelViewMatrix"),
-        //     false,
-        //     modelViewMatrix
-        //     // new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -6, 1])
-        // );
-        //
-        // const colorBuffer = this.context.createBuffer();
-        // this.context.bindBuffer(this.context.ARRAY_BUFFER, colorBuffer);
-        // this.context.bufferData(this.context.ARRAY_BUFFER, new Float32Array(polygon.points.map(() => [1, 1, 1, 1]).flat()), this.context.STATIC_DRAW);
-        // this.context.bindBuffer(this.context.ARRAY_BUFFER, null);
-        // this.context.bindBuffer(this.context.ARRAY_BUFFER, colorBuffer);
-        // this.context.vertexAttribPointer(this.context.getAttribLocation(this.program, "aVertexColor"), 4, this.context.FLOAT, false, 0, 0);
-        // this.context.enableVertexAttribArray(this.context.getAttribLocation(this.program, "aVertexColor"));
-        //
-        // this.context.bindBuffer(this.context.ARRAY_BUFFER, buffer);
-        // this.context.vertexAttribPointer(this.context.getAttribLocation(this.program, "aVertexPosition"), 3, this.context.FLOAT, false, 0, 0);
-        // this.context.enableVertexAttribArray(this.context.getAttribLocation(this.program, "aVertexPosition"));
-        //
-        // this.context.drawArrays(this.context.TRIANGLE_FAN, 0, polygon.points.length);
-        // this.context.drawElements(this.context.TRIANGLES, polygon.points.length, this.context.UNSIGNED_SHORT, 0);
 
         {
             const vertexCount = polygon.points.length;

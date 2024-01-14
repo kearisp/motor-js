@@ -129,6 +129,10 @@ export class Vector {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
+    public static intersectPlane(point: Point, direction: Point, v0: Point, v1: Point, v2: Point): Point|null {
+        return Vector.intersectPlaneV2(point, direction, v0, v1, v2);
+    }
+
     public static intersectPlaneV1(point: Point, direction: Point, v0: Point, v1: Point, v2: Point): Point | null {
         const EPSILON = 0.0000001;
         const edge1 = Vector.subtract(v1, v0);
@@ -169,7 +173,7 @@ export class Vector {
         return Vector.summary(point, Vector.multiply(direction, t));
     }
 
-    public static intersectPolygon(point: Point, direction: Point, polygon: Polygon): Point|null {
+    public static intersectPolygon(point: Point, direction: Point, polygon: Polygon): Point | null {
         const d = -(Vector.dot(polygon.getNormal(), polygon.points[0]));
         const t = -(Vector.dot(polygon.getNormal(), point) + d) / Vector.dot(polygon.getNormal(), direction);
 
@@ -201,6 +205,17 @@ export class Vector {
         return intersectPoint;
     }
 
+    public static getAngle(p1: Point, p2: Point) {
+        const dot = Vector.dot(p1, p2);
+
+        const d1 = Vector.distance(p1);
+        const d2 = Vector.distance(p2);
+
+        const cosAngle = dot / (d1 * d2);
+
+        return Math.acos(cosAngle) * (180 / Math.PI);
+    }
+
     public static areCoDirected(p1: Point, p2: Point): boolean {
         return Vector.areCoDirectedV2(p1, p2);
     }
@@ -226,17 +241,6 @@ export class Vector {
 
         // vectors are co-directed
         return true;
-    }
-
-    public static getAngle(p1: Point, p2: Point) {
-        const dot = Vector.dot(p1, p2);
-
-        const d1 = Vector.distance(p1);
-        const d2 = Vector.distance(p2);
-
-        const cosAngle = dot / (d1 * d2);
-
-        return Math.acos(cosAngle) * (180 / Math.PI);
     }
 
     public static areCoDirectedV2(p1: Point, p2: Point): boolean {

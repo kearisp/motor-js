@@ -52,7 +52,7 @@ export class Camera extends Observable<ListenerTypes> {
         const fieldOfView = (this.fov * Math.PI) / 180; // in radians
         const aspect = this.context.getWidth() / this.context.getHeight();
         const zNear = 0.1;
-        const zFar = 3000.0;
+        const zFar = 1500.0;
         const projectionMatrix = mat4.create();
 
         // note: glmatrix.js always has the first argument
