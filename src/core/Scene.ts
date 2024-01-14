@@ -55,12 +55,14 @@ class Scene {
     public debug(): void {
         this.isDebug = true;
         this.camera.setDebug(true);
+        this.context.setDebug(true);
     }
 
     protected debugger(): boolean {
         if(this.isDebug) {
             this.isDebug = false;
             this.camera.setDebug(false);
+            this.context.setDebug(false);
 
             return true;
         }
@@ -89,7 +91,7 @@ class Scene {
                 const polygon = new Polygon(polygonPoints);
 
                 polygon.setId(`${model.getId()}.${polygonIndex}`)
-                polygon.color = `hsl(${(modelIndex) * 100 + polygonIndex * 15}, 100%, 50%)`;
+                polygon.color = `hsla(${(modelIndex) * 100 + polygonIndex * 15}, 100%, 50%, 0.4)`;
 
                 return polygon;
             });

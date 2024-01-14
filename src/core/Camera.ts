@@ -49,19 +49,6 @@ export class Camera extends Observable<ListenerTypes> {
     }
 
     public getProjectionMatrix() {
-        return this.getProjectionMatrixV2();
-    }
-
-    public getProjectionMatrixV1() {
-        return [
-            [2 / (this.context.getWidth()), 0, 0, 0],
-            [0, -2 / (this.context.getHeight()), 0, 0],
-            [0, 0, -2 / (this.context.getHeight()), 0],
-            [-1, 1, 0, 1]
-        ];
-    }
-
-    public getProjectionMatrixV2() {
         const fieldOfView = (this.fov * Math.PI) / 180; // in radians
         const aspect = this.context.getWidth() / this.context.getHeight();
         const zNear = 0.1;
@@ -86,7 +73,7 @@ export class Camera extends Observable<ListenerTypes> {
         return matrix;
     }
 
-    public transformPointToCameraView(point: Point, t: boolean = false): Point {
+    public transformPointToCameraView(point: Point): Point {
         const matrix = this.rotationMatrix;
 
         const x = point.x * matrix[0][0] + point.y * matrix[1][0] + point.z * matrix[2][0] + matrix[3][0];

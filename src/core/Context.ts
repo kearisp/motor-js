@@ -8,6 +8,11 @@ abstract class Context {
     protected height: number = 0;
     protected fov: number = 45;
     protected models: Model[] = [];
+    protected debug: boolean = false;
+
+    public setDebug(debug: boolean) {
+        this.debug = debug;
+    }
 
     public getWidth(): number {
         return this.width;
