@@ -48,10 +48,6 @@ class SVGContext extends Context {
         this.svg.appendChild(line);
     }
 
-    public drawPolygon(polygon: Polygon) {
-        // TODO
-    }
-
     public fillRect(x: number, y: number, w: number, h: number) {
         const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
 
@@ -69,7 +65,7 @@ class SVGContext extends Context {
 
         polygon.setAttribute("style", `fill: ${this.fillStyle}`);
         polygon.setAttribute("points", points.map((point) => {
-            return `${this.getWidth() / 2 + point.x},${this.getHeight() / 2 - point.y}`;
+            return `${(point.x + 1) * this.width / 2},${(1 - point.y) * this.getHeight() / 2}`;
         }).join(" "));
         polygon.setAttribute("stroke-width", "0.9");
         polygon.setAttribute("stroke", "black");
@@ -90,10 +86,10 @@ class SVGContext extends Context {
     public renderPolygons(polygons: Polygon[], camera: Camera) {
         const bspNode = new BSPNode(polygons, camera, false);
 
-        bspNode.traverse({x: 0, y: 0, z: -1}, (polygon: Polygon): void => {
+        bspNode.traverse({x: 0, y: 0, z: 1}, (polygon: Polygon): void => {
             this.setStrokeStyle("#445555");
             this.setFillStyle(polygon.color || "#990000");
-            this.fillPolygon(polygon.project(camera.getFov()).points);
+            this.fillPolygon(polygon.project(camera).points);
         });
     }
 }

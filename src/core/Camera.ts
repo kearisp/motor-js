@@ -48,10 +48,6 @@ export class Camera extends Observable<ListenerTypes> {
         return calcCameraRotationMatrixV2(this.position, this.direction);
     }
 
-    public rotatePoint(point: Point): Point {
-        return this.transformPointToCameraView(point);
-    }
-
     public getProjectionMatrix() {
         return this.getProjectionMatrixV2();
     }
@@ -59,7 +55,7 @@ export class Camera extends Observable<ListenerTypes> {
     public getProjectionMatrixV1() {
         return [
             [2 / (this.context.getWidth()), 0, 0, 0],
-            [0, 2 / (this.context.getHeight()), 0, 0],
+            [0, -2 / (this.context.getHeight()), 0, 0],
             [0, 0, -2 / (this.context.getHeight()), 0],
             [-1, 1, 0, 1]
         ];
@@ -68,8 +64,8 @@ export class Camera extends Observable<ListenerTypes> {
     public getProjectionMatrixV2() {
         const fieldOfView = (this.fov * Math.PI) / 180; // in radians
         const aspect = this.context.getWidth() / this.context.getHeight();
-        const zNear = -100;
-        const zFar = 0.0;
+        const zNear = 0.1;
+        const zFar = 3000.0;
         const projectionMatrix = mat4.create();
 
         // note: glmatrix.js always has the first argument
@@ -90,7 +86,7 @@ export class Camera extends Observable<ListenerTypes> {
         return matrix;
     }
 
-    public transformPointToCameraView(point: Point): Point {
+    public transformPointToCameraView(point: Point, t: boolean = false): Point {
         const matrix = this.rotationMatrix;
 
         const x = point.x * matrix[0][0] + point.y * matrix[1][0] + point.z * matrix[2][0] + matrix[3][0];
@@ -106,7 +102,21 @@ export class Camera extends Observable<ListenerTypes> {
         };
     }
 
-    public projectPoint(point: Point): Point2D {
+    public projectPoint(point: Point): Point {
+        const projected = this.projectPointV2(point);
+
+        if(Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1 || Math.abs(projected.z) > 1) {
+            return {
+                x: NaN,
+                y: NaN,
+                z: NaN
+            };
+        }
+
+        return projected;
+    }
+
+    public projectPointV1(point: Point): Point2D {
         const {x, y, z} = point;
 
         if(z / 3 <= -this.fov) {
@@ -119,6 +129,21 @@ export class Camera extends Observable<ListenerTypes> {
         return {
             x: scale * x,
             y: scale * y
+        };
+    }
+
+    public projectPointV2(point: Point): Point {
+        const matrix = this.getProjectionMatrix();
+
+        const x = point.x * matrix[0][0] + point.y * matrix[1][0] + point.z * matrix[2][0] + matrix[3][0];
+        const y = point.x * matrix[0][1] + point.y * matrix[1][1] + point.z * matrix[2][1] + matrix[3][1];
+        const z = point.x * matrix[0][2] + point.y * matrix[1][2] + point.z * matrix[2][2] + matrix[3][2];
+        const w = point.x * matrix[0][3] + point.y * matrix[1][3] + point.z * matrix[2][3] + matrix[3][3];
+
+        return  {
+            x: x / w,
+            y: y / w,
+            z: z / w
         };
     }
 

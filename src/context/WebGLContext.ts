@@ -493,7 +493,7 @@ export class WebGLContext extends Context {
         this.context.enableVertexAttribArray(this.context.getAttribLocation(this.program, "aVertexColor"));
 
         // Tell WebGL which indices to use to index the vertices
-        this.context.bindBuffer(this.context.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        this.context.bindBuffer(this.context.ARRAY_BUFFER, indexBuffer);
 
         this.context.useProgram(this.program);
 
@@ -544,7 +544,7 @@ export class WebGLContext extends Context {
         {
             const vertexCount = polygon.points.length;
             this.context.drawElements(this.context.TRIANGLES, vertexCount, this.context.UNSIGNED_SHORT, 0);
-            this.context.viewport(0, 0, this.canvas.width, this.canvas.height);
+            this.context.viewport(0, 0, this.width, this.height);
         }
     }
 }

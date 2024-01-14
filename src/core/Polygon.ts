@@ -1,7 +1,8 @@
-import {Point} from "../types/Point";
 import {Vector} from "./Vector";
 import {BSPNode} from "./BSPNode";
+import {Camera} from "./Camera";
 import {Polygon2D} from "./Polygon2D";
+import {Point} from "../types/Point";
 import {Point2D} from "../types/Point2D";
 
 
@@ -198,25 +199,16 @@ export class Polygon {
         return true;
     }
 
-    public project(fov?: number): Polygon2D {
+    public project(camera?: Camera): Polygon2D {
         const points: Point2D[] = this.points.map((point: Point): Point2D => {
-            if(typeof fov === "undefined") {
+            if(!camera) {
                 return {
                     x: point.x,
                     y: point.y
                 };
             }
 
-            if(point.z / 3 <= -fov) {
-                return {x: NaN, y: NaN};
-            }
-
-            const scale = fov / (fov + point.z / 3);
-
-            return {
-                x: scale * point.x,
-                y: scale * point.y
-            };
+            return camera.projectPoint(point);
         }).filter((point: Point2D) => {
             return !isNaN(point.x) && !isNaN(point.y);
         });
