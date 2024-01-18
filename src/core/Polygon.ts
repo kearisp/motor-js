@@ -128,7 +128,7 @@ export class Polygon {
     }
 
     public isContainPoint(p: Point): boolean {
-        return this.isContainPointV3(p);
+        return this.isContainPointV2(p);
     }
 
     protected isContainPointV1(point: Point): boolean {
